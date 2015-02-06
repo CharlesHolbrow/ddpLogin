@@ -3,11 +3,11 @@ DDPLogin = {};
 // wrapConnection adds Meteor's client side accounts-password login
 // process to arbitrary connections
 
-DDPLogin.wrapConnection = function(connection){
-
+DDPLogin.connect = function(){
+  var connection = DDP.connect.apply(DDP, arguments);
   var Accounts = {connection:connection};
   var Meteor = {};
-  connection.wrappedContent = {
+  connection._wrappedContent = {
     Accounts:Accounts,
     Meteor:Meteor
   };
@@ -51,6 +51,43 @@ DDPLogin.wrapConnection = function(connection){
     psuedoLocalStore.userId = userId;
   };
 
+////////////////////////////////////////////////////////////////
+//
+//
+//
+// Add basic functionality from accounts-base accounts_common.js
+//
+//
+//
+////////////////////////////////////////////////////////////////
+
+  Accounts._options = {};
+
+  // how long (in days) until a login token expires
+  var DEFAULT_LOGIN_EXPIRATION_DAYS = 90;
+  // Clients don't try to auto-login with a token that is going to expire within
+  // .1 * DEFAULT_LOGIN_EXPIRATION_DAYS, capped at MIN_TOKEN_LIFETIME_CAP_SECS.
+  // Tries to avoid abrupt disconnects from expiring tokens.
+  var MIN_TOKEN_LIFETIME_CAP_SECS = 3600; // one hour
+
+  var getTokenLifetimeMs = function () {
+    return (Accounts._options.loginExpirationInDays ||
+            DEFAULT_LOGIN_EXPIRATION_DAYS) * 24 * 60 * 60 * 1000;
+  };
+
+  Accounts._tokenExpiration = function (when) {
+    // We pass when through the Date constructor for backwards compatibility;
+    // `when` used to be a number.
+    return new Date((new Date(when)).getTime() + getTokenLifetimeMs());
+  };
+
+  Accounts._tokenExpiresSoon = function (when) {
+    var minLifetimeMs = .1 * getTokenLifetimeMs();
+    var minLifetimeCapMs = MIN_TOKEN_LIFETIME_CAP_SECS * 1000;
+    if (minLifetimeMs > minLifetimeCapMs)
+      minLifetimeMs = minLifetimeCapMs;
+    return new Date() > (new Date(when) - minLifetimeMs);
+  };
 
 ////////////////////////////////////////////////////////////////
 //
@@ -593,6 +630,10 @@ DDPLogin.wrapConnection = function(connection){
 // finally, we return our wrapped connection
 //
 ////////////////////////////////////////////////////////////////
+  connection.logout = Meteor.logout;
+  connection.logoutOtherClients = Meteor.logoutOtherClients;
+  connection.loginWithPassword = Meteor.loginWithPassword;
+  connection.loginWithToken = Meteor.loginWithToken;
   return connection
 };
 

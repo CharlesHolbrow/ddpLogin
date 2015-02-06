@@ -281,13 +281,13 @@ DDPLogin.connect = function(){
       loggedInAndDataReadyCallback);
   };
 
-  makeClientLoggedOut = function() {
+  var makeClientLoggedOut = function() {
     unstoreLoginToken();
     Accounts.connection.setUserId(null);
     Accounts.connection.onReconnect = null;
   };
 
-  makeClientLoggedIn = function(userId, token, tokenExpires) {
+  var makeClientLoggedIn = function(userId, token, tokenExpires) {
     storeLoginToken(userId, token, tokenExpires);
     Accounts.connection.setUserId(userId);
   };
